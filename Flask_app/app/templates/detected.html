@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Detected Images — CRB detection{% endblock %}
+{% block content %}
+<h1>Detected Images</h1>
+<p class="lead">YOLO runs automatically when this page loads. Boxes and labels (e.g. crb, leaf, other) are drawn on each trap image from <code>static/uploads/images/</code>.</p>
+
+{% if error %}
+<div class="card">
+  <p class="err">{{ error }}</p>
+</div>
+{% elif not results %}
+<div class="card">
+  <p class="lead" style="margin:0;">No trap images to process. Add files under <code>static/uploads/images/</code> first.</p>
+</div>
+{% else %}
+<div class="grid">
+  {% for row in results %}
+  <figure class="tile">
+    {% if row.error %}
+    <figcaption>{{ row.source_name }}</figcaption>
+    <p class="err" style="padding:0.75rem;margin:0;">{{ row.error }}</p>
+    {% else %}
+    <img src="{{ url_for('static', filename=row.url) }}" alt="Detections for {{ row.source_name }}" loading="lazy" />
+    <figcaption>{{ row.source_name }}</figcaption>
+    <ul class="labels">
+      {% for line in row.labels %}
+      <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </figure>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

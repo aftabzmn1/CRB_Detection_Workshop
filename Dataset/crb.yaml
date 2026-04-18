@@ -1,0 +1,8 @@
+train: /content/crb_dataset_local/train/images
+val: /content/crb_dataset_local/val/images
+test: /content/crb_dataset_local/test/images
+
+names:
+  0: crb
+  1: leaf
+  2: other

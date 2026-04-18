@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Trap Images — CRB detection{% endblock %}
+{% block content %}
+<h1>Trap Images</h1>
+{% if not images %}
+<div class="card">
+  <p class="lead" style="margin:0;">No images yet. Copy trap photos into <code>CRB_Flask/static/uploads/images/</code> and refresh this page.</p>
+</div>
+{% else %}
+<div class="grid">
+  {% for img in images %}
+  <figure class="tile">
+    <img src="{{ url_for('static', filename=img.url) }}" alt="{{ img.name }}" loading="lazy" />
+    <figcaption>{{ img.name }}</figcaption>
+  </figure>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
