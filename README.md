@@ -146,6 +146,7 @@ CRB_Detection_Workshop/
 │   ├── labels/
 │   └── crb.yaml
 ├── docs/
+│   ├── Images/              # README figures
 │   └── HIDSI Workshop.pptx
 └── Flask_app/
     ├── run.py
