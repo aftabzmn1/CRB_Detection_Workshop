@@ -8,7 +8,11 @@ This repository supports a workshop led by **Mohammad Aftab Uzzaman** as part of
 
 ## Motivation: Coconut Rhinoceros Beetle (CRB)
 
-The Coconut Rhinoceros Beetle is a major pest in Hawaiʻi and can severely damage palm trees when populations are left unchecked. In the field, damage often shows up as bore holes, frass, and characteristic feeding marks on palms—patterns that are easier to spot when you know what to look for but tedious to review image by image. Manual screening of trap photos does not scale when many cameras run for long periods, which is why automated pipelines that combine IoT or field cameras with detection models are useful: they can flag frames for follow-up and make large image sets easier to work through.
+The Coconut Rhinoceros Beetle (CRB) is a major pest in Hawaiʻi. It causes serious damage to palm trees. If the population is not controlled, the damage can spread quickly. In the field, CRB damage can be seen as bore holes, frass, and V-shaped cuts on leaves. These signs are easy to recognize once you know what to look for.
+
+However, checking for these signs in images is not easy. Many cameras are placed in the field and they capture images for long periods of time. This creates a large number of images. Going through each image manually takes a lot of time and effort. It is also easy to miss important details when the dataset becomes too large.
+
+Because of this, manual monitoring does not scale well. Automated systems can help solve this problem. By combining field or IoT cameras with detection models, we can automatically identify images that may contain CRB. This helps reduce manual work and allows faster and more efficient monitoring.
 
 ![Figure 1 — Pheromone trap used for CRB monitoring](docs/Images/pheromon_trap.png)
 
@@ -22,9 +26,27 @@ The Coconut Rhinoceros Beetle is a major pest in Hawaiʻi and can severely damag
 
 ## Object detection and YOLO
 
-Object detection goes beyond asking “what class is in this image?” It answers both **what** is present and **where** it appears, usually by predicting **bounding boxes** around each object together with **class labels** and **confidence scores**. That matters for monitoring because beetles, leaves, and background clutter can all appear in the same frame: the model must localize instances, not only vote on the whole scene.
+Object detection means we identify what is in an image and also where it is. The model draws boxes around each object. Each box has a position and a size. The position is defined by x and y, which represent the center of the box. The size is defined by width (w) and height (h). The model also gives a confidence score to show how sure it is about each detection.
 
-**YOLO** (“You Only Look Once”) is a family of detectors designed for speed: the network runs a small number of forward passes over the image to propose boxes and scores in one go rather than scanning with separate heavy stages. This workshop uses **Ultralytics YOLOv8**, which fits well with trap imagery where latency and a simple training loop in Colab matter for teaching and iteration.
+This is important for this project because a single image can contain multiple objects such as CRB, leaves, and background. The model must detect each object separately and show its exact location.
+
+YOLO stands for You Only Look Once. This means the model looks at the image one time and makes predictions. Because of this, YOLO is very fast and efficient. It is suitable for real-time applications and large image datasets.
+
+In this workshop, we use Ultralytics YOLOv8. YOLOv8 is already trained on a large dataset called COCO, which contains many common objects. We fine-tune this model using our CRB dataset so it can detect specific classes like CRB, leaf, and other.
+
+YOLO models come in different sizes such as nano (n), small (s), medium (m), large (l), and extra-large (x). The nano model (YOLOv8n) is very fast but less accurate. It is useful when speed is more important than accuracy. The medium model (YOLOv8m) provides a better balance between speed and accuracy. In this project, we use YOLOv8m because it gives good accuracy while still being fast enough for practical use.
+
+How YOLO reads annotations:
+
+Each image has a corresponding text file with the same name. For example, image1.jpg will have image1.txt. This file contains the annotation information. Each line in the file represents one object in the image.
+
+The format is:
+
+```
+class x y w h
+```
+
+The class represents the object type, such as CRB, leaf, or other. The values x and y represent the center of the bounding box. The values w and h represent the width and height of the box. This is how YOLO understands what to detect and where to detect it.
 
 ![Figure 3 — Object detection with bounding boxes on trap imagery](docs/Images/object_detection.png)
 
@@ -67,21 +89,29 @@ After training, export **`best.pt`** from the run you want to use in the Flask a
 
 ## Model results and evaluation
 
-The plots below come from an Ultralytics training run (validation on the held-out split). They summarize how the detector behaves overall and **per class**.
+The plots below come from an Ultralytics training run using the validation dataset. These plots help us understand how the model performs overall and for each class.
 
-**Bias and limitations.** The sample used here is only a **small part** of a larger monitoring effort. In this subset there are **many more CRB examples than leaf** (and class balance varies by split). Models tend to follow the data: metrics can look strong on frequent classes and weaker on rare ones, so **results should be read as useful but not unbiased**—especially for **leaf**, where the model has less to learn from. Interpretation should stay tied to this workshop sample, not to full statewide conditions.
+The confusion matrix shows how well the model is making predictions. The diagonal values represent correct predictions. Higher values on the diagonal mean better performance.
+
+From the results, the model detects CRB well. It correctly identifies most CRB samples. However, the performance for leaf is weaker. Many leaf samples are missed and classified as background. This means the model has lower recall for leaf.
+
+There are also some false positives. In some cases, the model incorrectly predicts CRB or leaf when the image is actually background. This shows that the model can confuse objects with similar patterns.
 
 ![Figure 4 — Confusion matrix (normalized) for validation predictions](docs/Images/confusion_matrix.png)
 
-The **confusion matrix** compares **true class** (rows) to **predicted class** (columns). Brighter entries on the diagonal mean the model often assigns the correct label; off-diagonal mass shows which classes are confused with one another (for example, background or clutter mistaken for beetles or leaves).
+Bias and limitations. The sample used here is only a small part of a larger monitoring effort. In this subset, there are more CRB examples than leaf. The class balance also varies across train, validation, and test sets.
+
+Models usually perform better on classes with more data. This is why CRB performance is stronger. Leaf performance is weaker because there are fewer training examples.
+
+Because of this, the results should be interpreted carefully. These results are useful for understanding the model behavior in this workshop. However, they do not fully represent real-world conditions across all locations in Hawaiʻi.
 
 ![Figure 5 — Overall model performance (aggregate detection metrics)](docs/Images/overall_model_performance.png)
 
-**Overall model performance** summarizes headline metrics such as mean precision and mean recall across IoU thresholds (as reported by Ultralytics for the validation set). It gives a single snapshot of how the run did on average before drilling into individual classes.
+Overall model performance shows the main metrics such as precision and recall. These values are calculated across different IoU thresholds using the validation dataset. It gives a general idea of how well the model is performing before looking at each class separately.
 
 ![Figure 6 — Class-wise performance (precision, recall, mAP per class)](docs/Images/Classwise_performance.png)
 
-**Class-wise performance** breaks metrics down by **crb**, **leaf**, and **other**. This is where imbalance shows up most clearly: classes with more training examples often dominate average scores, while rarer classes can have wider swings—consistent with the **leaf vs. CRB** imbalance noted above.
+Class-wise performance shows the results for each class, such as CRB, leaf, and other. This helps us understand how the model behaves for different objects. In this dataset, CRB has more samples than leaf. Because of this, the model performs better for CRB and weaker for leaf. Classes with fewer examples can show lower performance and more variation in results.
 
 ---
 
@@ -167,4 +197,4 @@ CRB_Detection_Workshop/
 
 ## Acknowledgments
 
-We thank **Dr. Daniel Jenkins** and **Dr. Mohsen Paryavi** for their guidance and support connected to this work. We are grateful to the **Hawaiʻi Data Science Institute (HIDSI)** and the **Hawaiʻi State Energy Office (HSEO)** for **funding** and for the fellowship context that made the workshop possible.
+I thank Dr. Daniel Jenkins and Dr. Mohsen Paryavi for their guidance and support connected to this work. I am grateful to the Hawaiʻi Data Science Institute (HIDSI) and the Hawaiʻi State Energy Office (HSEO) for funding.
