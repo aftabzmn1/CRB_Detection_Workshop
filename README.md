@@ -8,24 +8,25 @@ This repository supports a workshop led by **Mohammad Aftab Uzzaman** as part of
 
 ## Motivation: Coconut Rhinoceros Beetle (CRB)
 
-- CRB is a major pest in Hawaiʻi.
-- It can severely damage palm trees.
-- Field signs include bore holes and characteristic feeding damage.
-- Manual review of trap photos is slow and labor-intensive.
-- Automated pipelines (e.g., IoT cameras + detection models) can scale monitoring.
+The Coconut Rhinoceros Beetle is a major pest in Hawaiʻi and can severely damage palm trees when populations are left unchecked. In the field, damage often shows up as bore holes, frass, and characteristic feeding marks on palms—patterns that are easier to spot when you know what to look for but tedious to review image by image. Manual screening of trap photos does not scale when many cameras run for long periods, which is why automated pipelines that combine IoT or field cameras with detection models are useful: they can flag frames for follow-up and make large image sets easier to work through.
 
-> **Figure (optional):** Add photos of CRB damage on palms for documentation.  
-> *Suggested credit: Dr. Mohsen Paryavi (per workshop materials).*
+![Figure 1 — Pheromone trap used for CRB monitoring](docs/Images/pheromon_trap.png)
+
+*Courtesy: Dr. Mohsen Paryavi.*
+
+![Figure 2 — Palm tree damage associated with CRB activity](docs/Images/tree_damage.png)
+
+*Courtesy: Dr. Mohsen Paryavi.*
 
 ---
 
-## Object detection and YOLO (short)
+## Object detection and YOLO
 
-- **Object detection** combines *what* is in the image (classification) with *where* it is (bounding boxes).
-- Models output **bounding boxes**, **class labels**, and **confidence scores**.
-- **YOLO** (“You Only Look Once”) performs fast, single-pass detection; this project uses **Ultralytics YOLOv8**.
+Object detection goes beyond asking “what class is in this image?” It answers both **what** is present and **where** it appears, usually by predicting **bounding boxes** around each object together with **class labels** and **confidence scores**. That matters for monitoring because beetles, leaves, and background clutter can all appear in the same frame: the model must localize instances, not only vote on the whole scene.
 
-> **Figure (optional):** Add an example image with bounding boxes drawn around CRB / other classes.
+**YOLO** (“You Only Look Once”) is a family of detectors designed for speed: the network runs a small number of forward passes over the image to propose boxes and scores in one go rather than scanning with separate heavy stages. This workshop uses **Ultralytics YOLOv8**, which fits well with trap imagery where latency and a simple training loop in Colab matter for teaching and iteration.
+
+![Figure 3 — Object detection with bounding boxes on trap imagery](docs/Images/object_detection.png)
 
 ---
 
@@ -60,33 +61,35 @@ In Colab, the notebook copies data from Drive into a local folder (e.g. `/conten
 3. Shuffle and split image filenames; copy each image and matching `.txt` label into the split folders; copy `crb.yaml` locally.
 4. Load a pretrained **`yolov8m.pt`** model and call `model.train(...)` with parameters such as `epochs`, `imgsz=640`, `batch`, and `device` appropriate for Colab GPU (`cuda` in the notebook).
 
-### Evaluation
-
-The notebook relies on **Ultralytics** training **validation** and saved **plots** under the run directory (as configured by `project` / `name` in `model.train`). After training, export **`best.pt`** from the run you want to use in the Flask app.
-
-> **Note:** This README does not embed numeric metrics or confusion matrices. For numbers and figures, use your Colab run outputs or the workshop slides in [`docs/`](docs/).
+After training, export **`best.pt`** from the run you want to use in the Flask app.
 
 ---
 
-## Model results
+## Model results and evaluation
 
-Training artifacts (curves, confusion matrix, batch images, etc.) are produced **inside Colab** by Ultralytics when you run the training cells—check the run folder printed during training (e.g. under `runs/detect/...` or the `project` path you set).
+The plots below come from an Ultralytics training run (validation on the held-out split). They summarize how the detector behaves overall and **per class**.
 
-If something is missing in the notebook outputs, use the slides in **`docs/`** for the workshop’s explanation of results and concepts.
+**Bias and limitations.** The sample used here is only a **small part** of a larger monitoring effort. In this subset there are **many more CRB examples than leaf** (and class balance varies by split). Models tend to follow the data: metrics can look strong on frequent classes and weaker on rare ones, so **results should be read as useful but not unbiased**—especially for **leaf**, where the model has less to learn from. Interpretation should stay tied to this workshop sample, not to full statewide conditions.
+
+![Figure 4 — Confusion matrix (normalized) for validation predictions](docs/Images/confusion_matrix.png)
+
+The **confusion matrix** compares **true class** (rows) to **predicted class** (columns). Brighter entries on the diagonal mean the model often assigns the correct label; off-diagonal mass shows which classes are confused with one another (for example, background or clutter mistaken for beetles or leaves).
+
+![Figure 5 — Overall model performance (aggregate detection metrics)](docs/Images/overall_model_performance.png)
+
+**Overall model performance** summarizes headline metrics such as mean precision and mean recall across IoU thresholds (as reported by Ultralytics for the validation set). It gives a single snapshot of how the run did on average before drilling into individual classes.
+
+![Figure 6 — Class-wise performance (precision, recall, mAP per class)](docs/Images/Classwise_performance.png)
+
+**Class-wise performance** breaks metrics down by **crb**, **leaf**, and **other**. This is where imbalance shows up most clearly: classes with more training examples often dominate average scores, while rarer classes can have wider swings—consistent with the **leaf vs. CRB** imbalance noted above.
 
 ---
 
 ## Local prediction with Flask
 
-The trained weights **`best.pt`** are loaded by a small **Flask** app that:
+The trained weights **`best.pt`** are loaded by a small **Flask** app that lists trap images from **`Flask_app/static/uploads/images/`**, runs **YOLO** inference when you open the detections page, saves annotated images to **`Flask_app/static/detected/`**, and shows results in the browser. Weights are loaded from [`Flask_app/weights/best.pt`](Flask_app/weights/best.pt) (see [`Flask_app/app/config.py`](Flask_app/app/config.py)).
 
-- Lists trap images from **`Flask_app/static/uploads/images/`**
-- Runs **YOLO** inference when you open the detections page
-- Saves annotated images to **`Flask_app/static/detected/`** and shows them in the browser
-
-Weights path used by the app: [`Flask_app/weights/best.pt`](Flask_app/weights/best.pt) (see [`Flask_app/app/config.py`](Flask_app/app/config.py)).
-
-> **Figure (optional):** Screenshot of the app at `http://127.0.0.1:5000`.
+![Figure 7 — Flask app running on the local machine (browser)](docs/Images/webpage_running_on_local_machin.png)
 
 ---
 
@@ -142,7 +145,8 @@ CRB_Detection_Workshop/
 │   ├── images/
 │   ├── labels/
 │   └── crb.yaml
-├── docs/                    # workshop slides (e.g. HIDSI Workshop.pptx)
+├── docs/
+│   └── HIDSI Workshop.pptx
 └── Flask_app/
     ├── run.py
     ├── requirements.txt
@@ -160,23 +164,6 @@ CRB_Detection_Workshop/
 
 ---
 
-## Workshop materials
-
-- **Slides:** [`docs/`](docs/) (PowerPoint). Use them for narrative, results context, and concepts if the notebook outputs are incomplete.
-
----
-
 ## Acknowledgments
 
-- Dr. Daniel Jenkins  
-- Dr. Mohsen Paryavi  
-- Hawaiʻi Data Science Institute (HIDSI)  
-- Hawaiʻi State Energy Office  
-
----
-
-## Notes for reviewers
-
-- Training is intended to run in **Google Colab** (GPU); paths in the notebook target **Drive + local Colab** folders.
-- The **Flask** app runs **locally** and reads **`Flask_app/weights/best.pt`**.
-- Dataset labels follow **YOLO** format (`Dataset/images` + matching `Dataset/labels` `.txt` files, `Dataset/crb.yaml` for class names and split paths in Colab).
+We thank **Dr. Daniel Jenkins** and **Dr. Mohsen Paryavi** for their guidance and support connected to this work. We are grateful to the **Hawaiʻi Data Science Institute (HIDSI)** and the **Hawaiʻi State Energy Office (HSEO)** for **funding** and for the fellowship context that made the workshop possible.

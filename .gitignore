@@ -18,3 +18,9 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# README figures (local only; not tracked)
+docs/Images/
+
+# Office temporary lock files
+docs/~$*
